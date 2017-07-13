@@ -50,9 +50,10 @@ class DaemonTest(BaseTest.Class):
         return vars(daemon)[section][key] if section else vars(daemon)[key]
 
 
-    def assert_success(self, section, key, value, expected_key=None, expected_value=None):
+    def assert_success(self, section, key, value,
+                expected_key=None, expected_value=None):
         '''
-        Try and read an l3overlay daemon using the given arguments.
+        Try and read an l3overlay daemon, using using the given arguments.
         Assumes it will succeed, and will run an assertion test to make
         sure a Daemon is returned.
         '''

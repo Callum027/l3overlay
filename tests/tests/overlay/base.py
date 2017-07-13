@@ -86,54 +86,104 @@ class OverlayBaseTest(object):
                 raise RuntimeError("unknown section type '%s'" % section)
 
 
-        def _overlay_conf_copy(self, section, key, value):
+        @staticmethod
+        def _overlay_conf_copy(overlay_conf, section, key, value):
             '''
             Make a deep copy of the overlay configuration dictionary,
             update the copy's values, and return the copy.
             '''
 
-            oc = copy.deepcopy(self.overlay_conf)
+            oc = copy.deepcopy(overlay_conf)
 
-            if value is not None:
-                if section:
-                    if section not in oc:
-                        oc[section] = {}
+            # Section is optional. If specified,
+            # add the key-value pair to the section
+            # of the overlay config.
+            if section:
+                if section not in oc:
+                    oc[section] = {}
+                if value is None and key in oc[section]:
+                    del oc[section][key]
+                elif value is not None:
                     oc[section][key] = value
-                elif key:
-                    if key not in oc:
-                        oc[key] = {}
+
+            # Otherwise, directly add the key-value pair
+            # to the top level of the overlay config.
+            elif key:
+                if key not in oc:
+                    oc[key] = {}
+                if value is None and key in oc:
+                    del oc[key]
+                elif value is not None:
                     oc[key] = value
+
+            # Need either at least key specified!
+            else:
+                raise RuntimeError("key not specified")
 
             return oc
 
 
-        def assert_success(self, section, key, value, expected_key=None, expected_value=None):
+        @staticmethod
+        def _overlay_read(overlay_conf, section, key, value):
+            '''
+            '''
+
+            oc = OverlayBaseTest._overlay_conf_copy(overlay_conf, section, key, value)
+
+            return l3overlay.overlay.read(
+                self.global_conf["log"],
+                self.global_conf["log_level"],
+                config=oc,
+            )
+
+
+        def _assert_success(self, overlay):
+            '''
+            '''
+
+            self.assertIsInstance(overlay, l3overlay.overlay.Overlay)
+
+
+        def _assert_value(self, overlay, section, key, value):
+            '''
+            '''
+
+            k = expected_key if expected_key else key
+
+            # Overlay static interface config value checking.
+            if l3overlay.overlay.static_interface.section_type_is_static_interface(section):
+                for si in overlay.static_interfaces:
+                    if si.name == util.section_name_get(section):
+                        self.assertEqual(value, vars(si)[k.replace("-", "_")])
+                        break
+
+            # Overlay config value checking.
+            else:
+                self.assertEqual(value, vars(overlay)[k.replace("-", "_")])
+
+
+        def assert_success(self, section, key, value,
+                expected_value=None, expected_key=None):
             '''
             Try and read an l3overlay daemon using the given arguments.
             Assumes it will succeed, and will run an assertion test to make
             sure a Daemon is returned.
             '''
 
-            oc = self._overlay_conf_copy(section, key, value)
-
-            overlay = l3overlay.overlay.read(
-                self.global_conf["log"],
-                self.global_conf["log_level"],
-                config = oc,
+            overlay = OverlayBaseTest._overlay_read(
+                self.overlay_conf,
+                section,
+                key,
+                value,
             )
 
-            self.assertIsInstance(overlay, l3overlay.overlay.Overlay)
-            if expected_value is not None:
-                k = expected_key if expected_key else key
-                if l3overlay.overlay.static_interface.section_type_is_static_interface(section):
-                    for si in overlay.static_interfaces:
-                        if si.name == util.section_name_get(section):
-                            self.assertEqual(expected_value, vars(si)[k.replace("-", "_")])
-                            break
-                else:
-                    self.assertEqual(expected_value, vars(overlay)[k.replace("-", "_")])
-
-            return overlay
+            self._assert_success(overlay)
+            self._assert_value(
+                overlay,
+                section,
+                expected_key if expected_key else key,
+                expected_value if expected_value else value,
+            )
 
 
         def assert_fail(self, section, key, value, *exceptions):
@@ -146,15 +196,33 @@ class OverlayBaseTest(object):
                 raise RuntimeError("no exceptions to test for")
 
             try:
-                oc = self._overlay_conf_copy(section, key, value)
-
-                l3overlay.overlay.read(
-                    self.global_conf["log"],
-                    self.global_conf["log_level"],
-                    config = oc,
+                OverlayBaseTest._overlay_read(
+                    self.overlay_conf,
+                    section,
+                    key,
+                    value,
                 )
                 raise RuntimeError('''l3overlay.overlay.read unexpectedly returned successfully
     Expected exception types: %s
     Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), oc))
+
             except exceptions:
                 pass
+
+
+        def assert_default(self, section, key, expected_value):
+            '''
+            Try and read an l3overlay daemon using the given arguments.
+            Assumes it will succeed, and will check to make sure the given
+            key is, by default, the expected value.
+            '''
+
+            overlay = OverlayBaseTest._overlay_read(oc, section, key, None)
+
+            self._assert_success(overlay)
+            self._assert_value(
+                overlay,
+                section,
+                key,
+                expected_value,
+            )

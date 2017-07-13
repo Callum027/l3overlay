@@ -356,6 +356,41 @@ class Daemon(worker.Worker):
             self._gre_keys[link].remove(key)
 
 
+    def ipsec_tunnel_add(self, local, remote, ipsec_psk=None):
+        '''
+        Add a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._ipsec_tunnels:
+            self._ipsec_tunnels[link] = {
+                "ipsec-psk": ipsec_psk,
+                "num": 1,
+            }
+        else:
+            if self._ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
+                self._ipsec_tunnels[link]["num"] += 1
+            else:
+                raise MismatchedIPsecPSKError(local, remote, ipsec_psk)
+
+
+    def ipsec_tunnel_remove(self, local, remote):
+        '''
+        Remove a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_keys:
+            return
+
+        if key in self._gre_keys[link]:
+            self._ipsec_tunnels[link].remove(key)
+
+
     def interface_name(self, name, suffix=None, limit=15):
         '''
         Returns a valid, unique (to this daemon daemon) interface name
