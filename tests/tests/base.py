@@ -99,21 +99,6 @@ class BaseTest(object):
         #
 
 
-        def object_get(self, *args, conf=None):
-            '''
-            '''
-
-            raise NotImplementedError()
-
-
-        def value_get(self, *args):
-            '''
-            Get the value from the given section and key on the object.
-            '''
-
-            raise NotImplementedError()
-
-
         def assert_success(self, *args, conf=None, value=None,
                 expected_key=None, expected_value=None):
             '''

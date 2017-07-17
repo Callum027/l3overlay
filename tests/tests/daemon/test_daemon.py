@@ -42,14 +42,14 @@ class DaemonTest(BaseTest.Class):
     #
 
 
-    def object_get(*args, conf=None):
+    def daemon_get(self, key, value, conf=None):
         '''
         '''
 
         key = args[0] if args else None
         value = args[1] if len(args) > 1 else None
 
-        gc = global_conf.copy()
+        gc = conf.copy() if conf else self.global_conf.copy()
 
         if value:
             gc[key] = value
@@ -69,8 +69,8 @@ class DaemonTest(BaseTest.Class):
         return vars(daemon)[section][key] if section else vars(daemon)[key]
 
 
-    def assert_success(self, *args, conf=self.global_conf, value=None,
-                expected_key=None, expected_value=None):
+    def assert_success(self, *args, conf=self.global_conf,
+                value=None, expected_key=None, expected_value=None):
         '''
         Try and read an l3overlay daemon, using using the given arguments.
         Assumes it will succeed, and will run an assertion test to make
@@ -79,7 +79,7 @@ class DaemonTest(BaseTest.Class):
 
         key = args[0]
 
-        daemon = self.object_get(key, value, conf=conf)
+        daemon = self.daemon_get(key, value, conf=conf)
         self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
 
         if expected_value is not None:
@@ -143,6 +143,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         default = self.global_conf.pop(key)
         no_default = self.global_conf.pop(no_key)
 
+        # TODO: finish and generalise this.
         # Test default value, if specified.
         if test_default:
             gc = self.global_conf.copy()
