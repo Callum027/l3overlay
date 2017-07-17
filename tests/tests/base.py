@@ -99,7 +99,14 @@ class BaseTest(object):
         #
 
 
-        def value_get(self, obj, section, key):
+        def object_get(self, *args, conf=None):
+            '''
+            '''
+
+            raise NotImplementedError()
+
+
+        def value_get(self, *args):
             '''
             Get the value from the given section and key on the object.
             '''
@@ -107,7 +114,7 @@ class BaseTest(object):
             raise NotImplementedError()
 
 
-        def assert_success(self, *args, value=None,
+        def assert_success(self, *args, conf=None, value=None,
                 expected_key=None, expected_value=None):
             '''
             -> section, key, value, expected_value, expected_key
@@ -129,7 +136,7 @@ class BaseTest(object):
             raise NotImplementedError()
 
 
-        def assert_fail(self, *args, value=None, exceptions=[]):
+        def assert_fail(self, *args, conf=None, value=None, exception=None, exceptions=[]):
             '''
             -> section, key, value, *exceptions
             Assertion abstract method for failure.
@@ -434,14 +441,10 @@ class BaseTest(object):
             self.assert_fail(*args, value=1, exception=util.GetError)
 
 
-        def assert_path(self, section, key, absolute=True, relative=True, test_default=False):
+        def assert_path(self, *args, assert_absolute=True, assert_relative=True):
             '''
             Test that key, of type path, is properly handled by the object.
             '''
-
-            # Test default value, if specified.
-            if test_default:
-                self.assert_default(section, key)
 
             # Test valid values.
             if absolute:

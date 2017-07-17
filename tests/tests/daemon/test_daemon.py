@@ -42,15 +42,34 @@ class DaemonTest(BaseTest.Class):
     #
 
 
-    def value_get(self, daemon, section, key):
+    def object_get(*args, conf=None):
+        '''
+        '''
+
+        key = args[0] if args else None
+        value = args[1] if len(args) > 1 else None
+
+        gc = global_conf.copy()
+
+        if value:
+            gc[key] = value
+
+        return l3overlay.daemon.read(gc)
+
+
+    def value_get(self, *args):
         '''
         Get the value from the given section and key on the daemon.
         '''
 
+        daemon = args[0]
+        key = args[1]
+        value = args[2]
+
         return vars(daemon)[section][key] if section else vars(daemon)[key]
 
 
-    def assert_success(self, section, key, value,
+    def assert_success(self, *args, conf=self.global_conf, value=None,
                 expected_key=None, expected_value=None):
         '''
         Try and read an l3overlay daemon, using using the given arguments.
@@ -58,45 +77,67 @@ class DaemonTest(BaseTest.Class):
         sure a Daemon is returned.
         '''
 
-        gc = self.global_conf.copy()
-        gc[key] = value
+        key = args[0]
 
-        daemon = l3overlay.daemon.read(gc)
-
+        daemon = self.object_get(key, value, conf=conf)
         self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
+
         if expected_value is not None:
             self.assertEqual(expected_value, vars(daemon)[expected_key if expected_key else key])
 
         return daemon
 
 
-    def assert_fail(self, section, key, value, *exceptions):
+    def assert_fail(self, *args, value=None, exception=None, exceptions=[]):
         '''
         Try and read an l3overlay daemon using the given arguments.
         Assumes it will fail, and raises a RuntimeError if it doesn't.
         '''
 
-        gc = self.global_conf.copy()
-        gc[key] = value
+        key = args[0]
 
         try:
-            l3overlay.daemon.read(gc)
+            self.daemon_get(key, value)
             raise RuntimeError('''l3overlay.daemon.read unexpectedly returned successfully
 Expected exception types: %s
 Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
+
         except exceptions:
             pass
 
+
+    def assert_default(self, *args):
+        '''
+        Create an l3overlay daemon object, using the default global
+        config, in order to test that the specified key contains a
+        default value that can be successfully processed as if it
+        was a specified one.
+        Optionally, also test if it matches a specified expected value.        
+        '''
+
+        key = args[0]
+        expected_value = args[1] if len(args) > 1 else None
+
+        daemon = self.daemon_get()
+        actual_value = vars(daemon)[key]
+
+        if expected_value:
+            self.assertEqual(actual_value, expected_value)
+
+        # Feed the default value as an explicit value into the creation
+        # of an object, to make sure it can be processed correctly.
+        self.assert_success(key, actual_value)
 
     #
     ##
     #
 
-    def assert_boolean(self, section, key, test_default=False):
+    def assert_boolean(self, *args):
         '''
         Test that key, of type boolean, is properly handled by the object.
         '''
 
+        key = args[0]
         no_key = "no_%s" % key
 
         default = self.global_conf.pop(key)
@@ -104,36 +145,37 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
 
         # Test default value, if specified.
         if test_default:
-            self.global_conf[key] = False
-            self.global_conf[no_key] = True
-            obj = self.assert_success(section, key, False)
+            gc = self.global_conf.copy()
+            gc[key] = False
+            gc[no_key] = True
+
+            obj = self.object_get(*args)
+            obj = self.assert_success(key, value=False)
             value = self.value_get(obj, section, key)
             self.assert_success(section, key, value, expected_value=value)
             self.global_conf[key] = default
             self.global_conf[no_key] = no_default
 
         # Test valid values.
-        self.global_conf.pop(key)
-        self.global_conf[no_key] = True
-        self.assert_success(section, key, True, expected_value=True)
-        self.assert_success(section, key, "true", expected_value=True)
-        self.assert_success(section, key, 1, expected_value=True)
-        self.assert_success(section, key, 2, expected_value=True)
-        self.global_conf[key] = default
-        self.global_conf[no_key] = no_default
+        gc = self.global_conf.copy()
+        gc.pop(key)
+        gc[no_key] = True
+        self.assert_success(key, True, conf=gc, expected_value=True)
+        self.assert_success(key, "true", conf=gc, expected_value=True)
+        self.assert_success(key, 1, conf=gc, expected_value=True)
+        self.assert_success(key, 2, conf=gc, expected_value=True)
 
-        self.global_conf[key] = False
-        self.global_conf.pop(no_key)
-        self.assert_success(section, no_key, False, expected_key=key, expected_value=False)
-        self.assert_success(section, no_key, "false", expected_key=key, expected_value=False)
-        self.assert_success(section, no_key, 0, expected_key=key, expected_value=False)
-        self.assert_success(section, no_key, -1, expected_key=key, expected_value=False)
-        self.global_conf[key] = default
-        self.global_conf[no_key] = no_default
+        gc = self.global_conf.copy()
+        gc[key] = False
+        gc.pop(no_key)
+        self.assert_success(no_key, False, expected_key=key, expected_value=False)
+        self.assert_success(no_key, "false", expected_key=key, expected_value=False)
+        self.assert_success(no_key, 0, expected_key=key, expected_value=False)
+        self.assert_success(no_key, -1, expected_key=key, expected_value=False)
 
         # Test invalid values.
-        self.assert_fail(section, key, "", util.GetError)
-        self.assert_fail(section, key, util.random_string(6), util.GetError)
+        self.assert_fail(key, "", util.GetError)
+        self.assert_fail(key, util.random_string(6), util.GetError)
 
 
     #
