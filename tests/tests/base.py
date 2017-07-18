@@ -99,8 +99,10 @@ class BaseTest(object):
         #
 
 
-        def assert_success(self, *args, conf=None, value=None,
-                expected_key=None, expected_value=None):
+        def assert_success(self, *args,
+                           object_key=None,
+                           value=None, expected_value=None,
+                           conf=None):
             '''
             -> section, key, value, expected_value, expected_key
             Assertion abstract method for success.
@@ -121,7 +123,10 @@ class BaseTest(object):
             raise NotImplementedError()
 
 
-        def assert_fail(self, *args, conf=None, value=None, exception=None, exceptions=[]):
+        def assert_fail(self, *args,
+                        value=None,
+                        exception=None, exceptions=[],
+                        conf=None):
             '''
             -> section, key, value, *exceptions
             Assertion abstract method for failure.
@@ -140,7 +145,7 @@ class BaseTest(object):
             raise NotImplementedError()
 
 
-        def assert_default(self, *args):
+        def assert_default(self, *args, expected_value=None):
             '''
             Test that the default value works properly when reprocessed.
             The point is to test that the default value is valid input.
@@ -162,10 +167,14 @@ class BaseTest(object):
             self.assert_success(*args, value=value)
 
 
-        def assert_boolean(self, *args):
+        def assert_boolean(self, *args, test_default=False):
             '''
             Test that key, of type boolean, is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             self.assert_success(*args, value=True, expected_value=True)
@@ -193,6 +202,10 @@ class BaseTest(object):
             _minval = minval if minval is not None else -1
             _maxval = maxval if maxval is not None else max(_minval + 1, 11)
 
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
+
             # Test valid values.
             self.assert_success(*args, value=_minval, expected_value=_minval)
             self.assert_success(*args, value=_maxval, expected_value=_maxval)
@@ -200,20 +213,24 @@ class BaseTest(object):
             self.assert_success(*args, value=str(_minval), expected_value=_minval)
 
             # Test invalid values.
-            self.assert_fail(*args, value="", util.GetError)
-            self.assert_fail(*args, value="foo", util.GetError)
+            self.assert_fail(*args, value="", exception=util.GetError)
+            self.assert_fail(*args, value="foo", exception=util.GetError)
 
             if minval is not None:
-                self.assert_fail(*args, value=_minval - 1, exception=util.GetError)
+                self.assert_fail(*args, value=_minval-1, exception=util.GetError)
 
             if maxval is not None:
-                self.assert_fail(*args, value=_maxval + 1, exception=util.GetError)
+                self.assert_fail(*args, value=_maxval+1, exception=util.GetError)
 
 
         def assert_name(self, *args, test_default=False):
             '''
             Test that key, of type name, is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             self.assert_success(*args, value="name", expected_value="name")
@@ -241,16 +258,32 @@ class BaseTest(object):
             _min = min if min is not None else 1
             _max = max if max is not None else max(_min + 1, 16)
 
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
+
             # Test valid values.
             for v in vvs:
                 hex_string = str.join("", [v for __ in range(0, _min)])
-                self.assert_success(*args, value=hex_string, expected_value="0x%s" % hex_string)
+                self.assert_success(
+                    *args,
+                    value=hex_string,
+                    expected_value="0x%s" % hex_string
+                )
 
             hex_string = str.join("", [vvs[i % len(vvs)] for i in range(0, _max)])
-            self.assert_success(*args, value=hex_string, expected_value="0x%s" % hex_string)
+            self.assert_success(
+                *args,
+                value=hex_string,
+                expected_value="0x%s" % hex_string
+            )
 
             hex_string = "0x%s" % hex_string
-            self.assert_success(*args, value=hex_string, expected_value=hex_string)
+            self.assert_success(
+                *args,
+                value=hex_string,
+                expected_value=hex_string
+            )
 
             # Test invalid values.
             self.assert_fail(*args, value="", exception=util.GetError)
@@ -258,60 +291,64 @@ class BaseTest(object):
             self.assert_fail(
                 *args,
                 value=str.join("", ["z" for __ in range(0, _min)]),
-                exception=util.GetError,
+                exception=util.GetError
             )
 
             if min is not None and _min > 1:
                 self.assert_fail(
                     *args,
                     value=str.join("", [vvs[i % len(vvs)] for i in range(0, _min - 1)]),
-                    exception=util.GetError,
+                    exception=util.GetError
                 )
 
             if max is not None and _max > 1:
                 self.assert_fail(
                     *args,
                     value=str.join("", [vvs[i % len(vvs)] for i in range(0, _max + 1)]),
-                    exception=util.GetError,
+                    exception=util.GetError
                 )
 
 
-        def assert_ip_network(self, *args):
+        def assert_ip_network(self, *args, test_default=False):
             '''
             Test that key, of type 'ip network', is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             self.assert_success(
                 *args,
                 value=3325256704,
-                expected_value=ipaddress.ip_network(3325256704),
+                expected_value=ipaddress.ip_network(3325256704)
             )
             self.assert_success(
                 *args,
                 value="198.51.100.0/24",
-                expected_value=ipaddress.ip_network("198.51.100.0/24"),
+                expected_value=ipaddress.ip_network("198.51.100.0/24")
             )
             self.assert_success(
                 *args,
                 value=ipaddress.ip_network("198.51.100.0/24"),
-                expected_value=ipaddress.ip_network("198.51.100.0/24"),
+                expected_value=ipaddress.ip_network("198.51.100.0/24")
             )
 
             self.assert_success(
                 *args,
                 value=42540766411282592856903984951653826560,
-                expected_value=ipaddress.ip_network(42540766411282592856903984951653826560),
+                expected_value=ipaddress.ip_network(42540766411282592856903984951653826560)
             )
             self.assert_success(
                 *args,
                 value="2001:db8::/32",
-                expected_value=ipaddress.ip_network("2001:db8::/32"),
+                expected_value=ipaddress.ip_network("2001:db8::/32")
             )
             self.assert_success(
                 *args,
                 value=ipaddress.ip_network("2001:db8::/32"),
-                expected_value=ipaddress.ip_network("2001:db8::/32"),
+                expected_value=ipaddress.ip_network("2001:db8::/32")
             )
 
             # Test invalid values.
@@ -322,42 +359,46 @@ class BaseTest(object):
             self.assert_fail(*args, value=ipaddress.ip_address("2001:db8::1"), exception=util.GetError)
 
 
-        def assert_ip_address(self, *args):
+        def assert_ip_address(self, *args, test_default=False):
             '''
             Test that key, of type 'ip address', is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             self.assert_success(
                 *args,
                 value=3221225985,
-                expected_value=ipaddress.ip_address(3221225985),
+                expected_value=ipaddress.ip_address(3221225985)
             )
             self.assert_success(
                 *args,
                 value="192.0.2.1",
-                expected_value=ipaddress.ip_address("192.0.2.1"),
+                expected_value=ipaddress.ip_address("192.0.2.1")
             )
             self.assert_success(
                 *args,
                 value=ipaddress.ip_address("192.0.2.1"),
-                expected_value=ipaddress.ip_address("192.0.2.1"),
+                expected_value=ipaddress.ip_address("192.0.2.1")
             )
 
             self.assert_success(
                 *args,
                 value=42540766411282592856903984951653826561,
-                expected_value=ipaddress.ip_address(42540766411282592856903984951653826561),
+                expected_value=ipaddress.ip_address(42540766411282592856903984951653826561)
             )
             self.assert_success(
                 *args,
                 value="2001:db8::1",
-                expected_value=ipaddress.ip_address("2001:db8::1"),
+                expected_value=ipaddress.ip_address("2001:db8::1")
             )
             self.assert_success(
                 *args,
                 value=ipaddress.ip_address("2001:db8::1"),
-                expected_value=ipaddress.ip_address("2001:db8::1"),
+                expected_value=ipaddress.ip_address("2001:db8::1")
             )
 
             # Test invalid values.
@@ -368,10 +409,14 @@ class BaseTest(object):
             self.assert_fail(*args, value=ipaddress.ip_network("2001:db8::/32"), exception=util.GetError)
 
 
-        def assert_netmask(self, *args, is_ipv6=False):
+        def assert_netmask(self, *args, is_ipv6=False, test_default=False):
             '''
             Test that key, of type 'netmask', is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             self.assert_success(*args, value="8", expected_value=8)
@@ -410,10 +455,14 @@ class BaseTest(object):
                 self.assert_fail(*args, value=128, exception=util.GetError)
 
 
-        def assert_enum(self, *args, enum=None):
+        def assert_enum(self, *args, enum=None, test_default=False):
             '''
             Test that key, of type enum, is properly handled by the object.
             '''
+
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
             # Test valid values.
             for e in enum:
@@ -426,35 +475,37 @@ class BaseTest(object):
             self.assert_fail(*args, value=1, exception=util.GetError)
 
 
-        def assert_path(self, *args, assert_absolute=True, assert_relative=True):
+        def assert_path(self, *args, assert_absolute=True, assert_relative=True, test_default=False):
             '''
             Test that key, of type path, is properly handled by the object.
             '''
 
-            # Test valid values.
-            if absolute:
-                path = os.path.join(self.tmp_dir, "assert_path.txt")
-                self.assert_success(section, key, path, expected_value=path)
+            # Test default value.
+            if test_default:
+                self.assert_default(*args)
 
-            if relative:
-                self.assert_success(section, key, "../assert_path.txt")
+            # Test valid values.
+            if assert_absolute:
+                path = os.path.join(self.tmp_dir, "assert_path.txt")
+                self.assert_success(*args, value=path, expected_value=path)
+
+            if assert_relative:
+                self.assert_success(*args, value="../assert_path.txt")
 
             # Test invalid values.
-            if not absolute:
+            if not assert_absolute:
                 self.assert_fail(
-                    section,
-                    key,
-                    os.path.join(self.tmp_dir, "assert_path.txt"),
-                    util.GetError,
+                    *args,
+                    value=os.path.join(self.tmp_dir, "assert_path.txt"),
+                    exception=util.GetError
                 )
 
-            if not relative:
+            if not assert_relative:
                 self.assert_fail(
-                    section,
-                    key,
-                    os.path.join("..", "assert_path.txt"),
-                    util.GetError,
+                    *args,
+                    value=os.path.join("..", "assert_path.txt"),
+                    exception=util.GetError
                 )
 
-            self.assert_fail(section, key, "", util.GetError)
-            self.assert_fail(section, key, 1, util.GetError)
+            self.assert_fail(*args, value="", exception=util.GetError)
+            self.assert_fail(*args, value=1, exception=util.GetError)

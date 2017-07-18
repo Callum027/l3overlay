@@ -42,35 +42,22 @@ class DaemonTest(BaseTest.Class):
     #
 
 
-    def daemon_get(self, key, value, conf=None):
+    def config_get(self, key, value, conf=None):
         '''
         '''
-
-        key = args[0] if args else None
-        value = args[1] if len(args) > 1 else None
 
         gc = conf.copy() if conf else self.global_conf.copy()
 
         if value:
             gc[key] = value
 
-        return l3overlay.daemon.read(gc)
+        return gc
 
 
-    def value_get(self, *args):
-        '''
-        Get the value from the given section and key on the daemon.
-        '''
-
-        daemon = args[0]
-        key = args[1]
-        value = args[2]
-
-        return vars(daemon)[section][key] if section else vars(daemon)[key]
-
-
-    def assert_success(self, *args, conf=self.global_conf,
-                value=None, expected_key=None, expected_value=None):
+    def assert_success(self, *args,
+                       object_key=None,
+                       value=None, expected_value=None,
+                       conf=None):
         '''
         Try and read an l3overlay daemon, using using the given arguments.
         Assumes it will succeed, and will run an assertion test to make
@@ -79,34 +66,43 @@ class DaemonTest(BaseTest.Class):
 
         key = args[0]
 
-        daemon = self.daemon_get(key, value, conf=conf)
+        daemon = l3overlay.daemon.read(self.config_get(key, value, conf))
         self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
 
         if expected_value is not None:
-            self.assertEqual(expected_value, vars(daemon)[expected_key if expected_key else key])
+            self.assertEqual(
+                expected_value,
+                vars(daemon)[object_key if object_key else key],
+            )
 
         return daemon
 
 
-    def assert_fail(self, *args, value=None, exception=None, exceptions=[]):
+    def assert_fail(self, *args,
+                    value=None,
+                    exception=None, exceptions=[],
+                    conf=None):
         '''
         Try and read an l3overlay daemon using the given arguments.
         Assumes it will fail, and raises a RuntimeError if it doesn't.
         '''
 
         key = args[0]
+        excs = tuple(exceptions) if exceptions else (exception,)
+
+        gc = self.global_config_get(key, value, conf)
 
         try:
-            self.daemon_get(key, value)
+            l3overlay.daemon.read(gc)
             raise RuntimeError('''l3overlay.daemon.read unexpectedly returned successfully
 Expected exception types: %s
-Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
+Arguments: %s''' % (str.join(", ", (e.__name__ for e in excs)), gc))
 
-        except exceptions:
+        except excs:
             pass
 
 
-    def assert_default(self, *args):
+    def assert_default(self, *args, expected_value=None):
         '''
         Create an l3overlay daemon object, using the default global
         config, in order to test that the specified key contains a
@@ -116,7 +112,6 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         '''
 
         key = args[0]
-        expected_value = args[1] if len(args) > 1 else None
 
         daemon = self.daemon_get()
         actual_value = vars(daemon)[key]
@@ -128,11 +123,13 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         # of an object, to make sure it can be processed correctly.
         self.assert_success(key, actual_value)
 
+
     #
     ##
     #
 
-    def assert_boolean(self, *args):
+
+    def assert_boolean(self, *args, test_default=False):
         '''
         Test that key, of type boolean, is properly handled by the object.
         '''
@@ -140,43 +137,33 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         key = args[0]
         no_key = "no_%s" % key
 
-        default = self.global_conf.pop(key)
-        no_default = self.global_conf.pop(no_key)
-
-        # TODO: finish and generalise this.
-        # Test default value, if specified.
+        # Test default value.
         if test_default:
             gc = self.global_conf.copy()
             gc[key] = False
             gc[no_key] = True
-
-            obj = self.object_get(*args)
-            obj = self.assert_success(key, value=False)
-            value = self.value_get(obj, section, key)
-            self.assert_success(section, key, value, expected_value=value)
-            self.global_conf[key] = default
-            self.global_conf[no_key] = no_default
+            self.assert_success(key, conf=gc)
 
         # Test valid values.
         gc = self.global_conf.copy()
         gc.pop(key)
         gc[no_key] = True
-        self.assert_success(key, True, conf=gc, expected_value=True)
-        self.assert_success(key, "true", conf=gc, expected_value=True)
-        self.assert_success(key, 1, conf=gc, expected_value=True)
-        self.assert_success(key, 2, conf=gc, expected_value=True)
+        self.assert_success(key, value=True, expected_value=True, conf=gc)
+        self.assert_success(key, value="true", expected_value=True, conf=gc)
+        self.assert_success(key, value=1, expected_value=True, conf=gc)
+        self.assert_success(key, value=2, expected_value=True, conf=gc)
 
         gc = self.global_conf.copy()
         gc[key] = False
         gc.pop(no_key)
-        self.assert_success(no_key, False, expected_key=key, expected_value=False)
-        self.assert_success(no_key, "false", expected_key=key, expected_value=False)
-        self.assert_success(no_key, 0, expected_key=key, expected_value=False)
-        self.assert_success(no_key, -1, expected_key=key, expected_value=False)
+        self.assert_success(no_key, object_key=key, value=False, expected_value=False, conf=gc)
+        self.assert_success(no_key, object_key=key, value="false", expected_value=False, conf=gc)
+        self.assert_success(no_key, object_key=key, value=0, expected_value=False, conf=gc)
+        self.assert_success(no_key, object_key=key, value=-1, expected_value=False, conf=gc)
 
         # Test invalid values.
-        self.assert_fail(key, "", util.GetError)
-        self.assert_fail(key, util.random_string(6), util.GetError)
+        self.assert_fail(key, value="", exception=util.GetError)
+        self.assert_fail(key, value=util.random_string(6), exception=util.GetError)
 
 
     #
@@ -190,10 +177,9 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         '''
 
         self.assert_enum(
-            None,
             "log_level",
-            ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-            test_default = True,
+            enum=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            test_default=True,
         )
 
 
@@ -202,7 +188,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'use_ipsec' is properly handled by the daemon.
         '''
 
-        self.assert_boolean(None, "use_ipsec", test_default=True)
+        self.assert_boolean("use_ipsec", test_default=True)
 
 
     def test_ipsec_manage(self):
@@ -210,7 +196,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'ipsec_manage' is properly handled by the daemon.
         '''
 
-        self.assert_boolean(None, "ipsec_manage", test_default=True)
+        self.assert_boolean("ipsec_manage", test_default=True)
 
 
     def test_ipsec_psk(self):
@@ -218,7 +204,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'ipsec_psk' is properly handled by the daemon.
         '''
 
-        self.assert_hex_string(None, "ipsec_psk", min=6, max=64)
+        self.assert_hex_string("ipsec_psk", min=6, max=64)
 
 
     def test_lib_dir(self):
@@ -226,7 +212,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'lib_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "lib_dir", test_default=True)
+        self.assert_path("lib_dir", test_default=True)
 
 
     def test_fwbuilder_script_dir(self):
@@ -234,7 +220,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'fwbuilder_script_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "fwbuilder_script_dir")
+        self.assert_path("fwbuilder_script_dir")
 
 
     def test_overlay_conf_dir(self):
@@ -242,7 +228,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'overlay_conf_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "overlay_conf_dir", test_default=True)
+        self.assert_path("overlay_conf_dir", test_default=True)
 
 
     def test_template_dir(self):
@@ -250,7 +236,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'template_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "template_dir", test_default=True)
+        self.assert_path("template_dir", test_default=True)
 
 
     def test_pid(self):
@@ -258,7 +244,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'pid' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "pid", test_default=True)
+        self.assert_path("pid", test_default=True)
 
 
     def test_ipsec_conf(self):
@@ -266,7 +252,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'ipsec_conf' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "ipsec_conf", test_default=True)
+        self.assert_path("ipsec_conf", test_default=True)
 
 
     def test_ipsec_secrets(self):
@@ -274,7 +260,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'ipsec_secrets' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "ipsec_secrets", test_default=True)
+        self.assert_path("ipsec_secrets", test_default=True)
 
 
     def test_overlay_conf(self):
@@ -282,31 +268,38 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'overlay_conf' is properly handled by the daemon.
         '''
 
-        overlay_conf_dir = self.global_conf["overlay_conf_dir"]
-        self.global_conf["overlay_conf_dir"] = None
+        gc = self.global_conf.copy()
+        gc["overlay_global_conf"] = None
 
         # Test absolute paths.
+        value = [os.path.join(overlay_conf_dir, f) for f in os.listdir(overlay_conf_dir)]
         self.assert_success(
-            None,
             "overlay_conf",
-            [os.path.join(overlay_conf_dir, f) for f in os.listdir(overlay_conf_dir)],
+            value=value,
+            conf=gc,
         )
 
         # Test relative paths.
+        value = [os.path.relpath(os.path.join(overlay_conf_dir, f)) for f in os.listdir(overlay_conf_dir)]
         self.assert_success(
-            None,
             "overlay_conf",
-            [os.path.relpath(os.path.join(overlay_conf_dir, f)) for f in os.listdir(overlay_conf_dir)],
+            value=value,
+            conf=gc,
         )
 
         # Test non-existent paths.
-        self.assert_fail(None, "overlay_conf", [util.random_string(16)], FileNotFoundError)
+        self.assert_fail(
+            "overlay_conf",
+            value=[util.random_string(16)],
+            exception=FileNotFoundError,
+            conf=gc,
+        )
 
         # Test invalid values.
-        self.assert_fail(None, "overlay_conf", "", util.GetError)
-        self.assert_fail(None, "overlay_conf", 1, l3overlay.daemon.ReadError)
-        self.assert_fail(None, "overlay_conf", [""], util.GetError)
-        self.assert_fail(None, "overlay_conf", [1], util.GetError)
+        self.assert_fail("overlay_conf", value="", exception=util.GetError, conf=gc)
+        self.assert_fail("overlay_conf", value=1, exception=l3overlay.daemon.ReadError, conf=gc)
+        self.assert_fail("overlay_conf", value=[""], exception=util.GetError, conf=gc)
+        self.assert_fail("overlay_conf", value=[1], exception=util.GetError, conf=gc)
 
 
 if __name__ == "__main__":
