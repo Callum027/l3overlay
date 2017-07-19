@@ -68,6 +68,124 @@ class OverlayBaseTest(object):
         #
 
 
+        def config_get(self, *args, conf=None):
+            '''
+            '''
+
+            oc = copy.deepcopy(conf) if conf else copy.deepcopy(self.overlay_conf)
+
+            # Section is optional. If specified,
+            # add the key-value pair to the section
+            # of the overlay config.
+            if section:
+                if section not in oc:
+                    oc[section] = {}
+                if value is None and key in oc[section]:
+                    del oc[section][key]
+                elif value is not None:
+                    oc[section][key] = value
+
+            # Otherwise, directly add the key-value pair
+            # to the top level of the overlay config.
+            elif key:
+                if key not in oc:
+                    oc[key] = {}
+                if value is None and key in oc:
+                    del oc[key]
+                elif value is not None:
+                    oc[key] = value
+
+            # Need either at least key specified!
+            else:
+                raise RuntimeError("key not specified")
+
+            return oc
+
+
+        def object_get(self, conf=self.overlay_conf):
+            '''
+            Create an object instance, use assertIsInstance to ensure
+            it is of the correct type, and return it.
+            '''
+
+            overlay = l3overlay.overlay.read(
+                self.global_conf["log"],
+                self.global_conf["log_level"],
+                config=conf,
+            )
+            self.assertIsInstance(overlay, l3overlay.overlay.Overlay)
+
+            return overlay
+
+
+        def value_get(self, *args, obj=None, internal_key=None):
+            '''
+            Get a value from the given object, using the supplied
+            key-value pair (and internal key if used).
+            '''
+
+            section = args[0]
+            key = internal_key if internal_key else args[1]
+
+            key = k.replace("-", "_")
+
+            if section == "overlay":
+                return vars(obj)[key]
+            elif section.startswith("static"):
+                name = util.section_name_get(section)
+                for si in obj.static_interfaces:
+                    if name == si.name:
+                        return vars(si)[key]
+            else:
+                raise RuntimeError("unknown section type '%s'" % section)
+
+
+        def assert_success(self, *args,
+                           object_key=None,
+                           value=None, expected_value=None,
+                           conf=None):
+            '''
+            Test that an object is successfully created using the given arguments,
+            and passes assertions which check the value in the object
+            is what is expected.
+            '''
+
+
+
+
+        def assert_fail(self, *args,
+                        value=None,
+                        exception=None, exceptions=[],
+                        conf=None):
+            '''
+            Test that creating an object with the given arguments raises
+            a specific exception, or one of a list of exceptions.
+            '''
+
+
+        def assert_default(self, *args, expected_value=None):
+            '''
+            Test that the default value works properly when reprocessed.
+            The point is to test that the default value is valid input.       
+            '''
+
+        #
+        ##
+        #
+
+        def _overlay_config_get(self, section, key, value, conf=None):
+            '''
+            Create an instance of the overlay config, based off either the
+            class variable or a given config dict, optionally specifying
+            a given key to override its value with.
+            '''
+
+
+        #
+        ##
+        #
+
+
         def value_get(self, overlay, section, k):
             '''
             Get the value from the given section and key on the overlay.

@@ -28,7 +28,7 @@ from l3overlay import util
 
 
 MY_DIR   = util.path_my_dir()
-ROOT_DIR = os.path.join(MY_DIR, "..", "..")
+ROOT_DIR = os.path.join(MY_DIR, "..", "..", "..")
 SRC_DIR  = os.path.join(ROOT_DIR, "src")
 
 LOG_DIR = os.path.join(ROOT_DIR, ".tests")
@@ -104,8 +104,10 @@ class BaseTest(object):
                            value=None, expected_value=None,
                            conf=None):
             '''
-            -> section, key, value, expected_value, expected_key
-            Assertion abstract method for success.
+            Test that an object is successfully created using the given arguments,
+            and passes assertions which check the value in the object
+            is what is expected.
+
             Process:
             * Modify object config based on the given
               section, key and value:
@@ -120,7 +122,13 @@ class BaseTest(object):
                   input value, or the given expected value/key
             '''
 
-            raise NotImplementedError()
+            obj = self.object_get(self.config_get(*args, conf=conf))
+
+            if expected_value is not None:
+                self.assertEqual(
+                    expected_value,
+                    self.value_get(*args, internal_key=internal_key),
+                )
 
 
         def assert_fail(self, *args,
@@ -128,8 +136,9 @@ class BaseTest(object):
                         exception=None, exceptions=[],
                         conf=None):
             '''
-            -> section, key, value, *exceptions
-            Assertion abstract method for failure.
+            Test that creating an object with the given arguments raises
+            a specific exception, or one of a list of exceptions.
+
             Process:
             * Modify object config based on the given
               section, key and value:
@@ -142,7 +151,17 @@ class BaseTest(object):
               re-raise an unexpected exception if one was thrown
             '''
 
-            raise NotImplementedError()
+            exceptions = tuple(exceptions) if exceptions else (exception,)
+
+            try:
+                object_conf = self.config_get(*args, conf=conf)
+                self.object_get(object_conf)
+                raise RuntimeError('''object_get unexpectedly returned successfully
+    Expected exception types: %s
+    Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), object_conf))
+
+            except exceptions:
+                pass
 
 
         def assert_default(self, *args, expected_value=None):
@@ -151,7 +170,15 @@ class BaseTest(object):
             The point is to test that the default value is valid input.
             '''
 
-            raise NotImplementedError()
+            obj = self.object_get()
+            actual_value = self.value_get(*args, obj=obj)
+
+            if expected_value:
+                self.assertEqual(actual_value, expected_value)
+
+            # Feed the default value as an explicit value into the creation
+            # of an object, to make sure it can be processed correctly.
+            self.assert_success(*args, value=actual_value, expected_value=actual_value)
 
 
         #

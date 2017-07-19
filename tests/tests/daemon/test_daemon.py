@@ -26,149 +26,15 @@ from l3overlay import util
 
 import l3overlay.daemon
 
-from tests.base import BaseTest
+from tests.daemon.base import DaemonBaseTest
 
 
-class DaemonTest(BaseTest.Class):
+class DaemonTest(DaemonBaseTest.Class):
     '''
     l3overlay unit test for reading Daemon objects.
     '''
 
     name = "test_daemon"
-
-
-    #
-    ##
-    #
-
-
-    def config_get(self, key, value, conf=None):
-        '''
-        '''
-
-        gc = conf.copy() if conf else self.global_conf.copy()
-
-        if value:
-            gc[key] = value
-
-        return gc
-
-
-    def assert_success(self, *args,
-                       object_key=None,
-                       value=None, expected_value=None,
-                       conf=None):
-        '''
-        Try and read an l3overlay daemon, using using the given arguments.
-        Assumes it will succeed, and will run an assertion test to make
-        sure a Daemon is returned.
-        '''
-
-        key = args[0]
-
-        daemon = l3overlay.daemon.read(self.config_get(key, value, conf))
-        self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
-
-        if expected_value is not None:
-            self.assertEqual(
-                expected_value,
-                vars(daemon)[object_key if object_key else key],
-            )
-
-        return daemon
-
-
-    def assert_fail(self, *args,
-                    value=None,
-                    exception=None, exceptions=[],
-                    conf=None):
-        '''
-        Try and read an l3overlay daemon using the given arguments.
-        Assumes it will fail, and raises a RuntimeError if it doesn't.
-        '''
-
-        key = args[0]
-        excs = tuple(exceptions) if exceptions else (exception,)
-
-        gc = self.global_config_get(key, value, conf)
-
-        try:
-            l3overlay.daemon.read(gc)
-            raise RuntimeError('''l3overlay.daemon.read unexpectedly returned successfully
-Expected exception types: %s
-Arguments: %s''' % (str.join(", ", (e.__name__ for e in excs)), gc))
-
-        except excs:
-            pass
-
-
-    def assert_default(self, *args, expected_value=None):
-        '''
-        Create an l3overlay daemon object, using the default global
-        config, in order to test that the specified key contains a
-        default value that can be successfully processed as if it
-        was a specified one.
-        Optionally, also test if it matches a specified expected value.        
-        '''
-
-        key = args[0]
-
-        daemon = self.daemon_get()
-        actual_value = vars(daemon)[key]
-
-        if expected_value:
-            self.assertEqual(actual_value, expected_value)
-
-        # Feed the default value as an explicit value into the creation
-        # of an object, to make sure it can be processed correctly.
-        self.assert_success(key, actual_value)
-
-
-    #
-    ##
-    #
-
-
-    def assert_boolean(self, *args, test_default=False):
-        '''
-        Test that key, of type boolean, is properly handled by the object.
-        '''
-
-        key = args[0]
-        no_key = "no_%s" % key
-
-        # Test default value.
-        if test_default:
-            gc = self.global_conf.copy()
-            gc[key] = False
-            gc[no_key] = True
-            self.assert_success(key, conf=gc)
-
-        # Test valid values.
-        gc = self.global_conf.copy()
-        gc.pop(key)
-        gc[no_key] = True
-        self.assert_success(key, value=True, expected_value=True, conf=gc)
-        self.assert_success(key, value="true", expected_value=True, conf=gc)
-        self.assert_success(key, value=1, expected_value=True, conf=gc)
-        self.assert_success(key, value=2, expected_value=True, conf=gc)
-
-        gc = self.global_conf.copy()
-        gc[key] = False
-        gc.pop(no_key)
-        self.assert_success(no_key, object_key=key, value=False, expected_value=False, conf=gc)
-        self.assert_success(no_key, object_key=key, value="false", expected_value=False, conf=gc)
-        self.assert_success(no_key, object_key=key, value=0, expected_value=False, conf=gc)
-        self.assert_success(no_key, object_key=key, value=-1, expected_value=False, conf=gc)
-
-        # Test invalid values.
-        self.assert_fail(key, value="", exception=util.GetError)
-        self.assert_fail(key, value=util.random_string(6), exception=util.GetError)
-
-
-    #
-    ##
-    #
 
 
     def test_log_level(self):
@@ -267,6 +133,8 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in excs)), gc))
         '''
         Test that 'overlay_conf' is properly handled by the daemon.
         '''
+
+        overlay_conf_dir = self.global_conf["overlay_conf_dir"]
 
         gc = self.global_conf.copy()
         gc["overlay_global_conf"] = None
