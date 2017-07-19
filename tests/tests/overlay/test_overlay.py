@@ -25,7 +25,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.overlay import OverlayBaseTest
+from tests.overlay.base import OverlayBaseTest
 
 
 class OverlayTest(OverlayBaseTest.Class):

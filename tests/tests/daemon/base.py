@@ -43,69 +43,44 @@ class DaemonBaseTest(object):
         #
 
 
-        def assert_success(self, *args,
-                           object_key=None,
-                           value=None, expected_value=None,
-                           conf=None):
+        def config_get(self, *args, value=None, conf=None):
             '''
-            Test that an object is successfully created using the given arguments,
-            and passes assertions which check the value in the object
-            is what is expected.
+            Create an object config instance, using the given arguments
+            to override values in it. An existing config instance can also
+            be specified to base the result from, rather than the test class
+            default.
             '''
 
             key = args[0]
 
-            daemon = l3overlay.daemon.read(self._global_config_get(key, value, conf))
+            gc = conf.copy() if conf else self.global_conf.copy()
+
+            if value is not None:
+                gc[key] = value
+
+            return gc
+
+
+        def object_get(self, conf=None):
+            '''
+            Create an object instance, use assertIsInstance to ensure
+            it is of the correct type, and return it.
+            '''
+
+            daemon = l3overlay.daemon.read(conf if conf else self.global_conf)
             self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
 
-            if expected_value is not None:
-                self.assertEqual(
-                    expected_value,
-                    vars(daemon)[object_key if object_key else key],
-                )
+            return daemon
 
 
-        def assert_fail(self, *args,
-                        value=None,
-                        exception=None, exceptions=[],
-                        conf=None):
+        def value_get(self, *args, obj=None, internal_key=None):
             '''
-            Test that creating an object with the given arguments raises
-            a specific exception, or one of a list of exceptions.
+            Get a value from the given object, using the supplied
+            key-value pair (and internal key if used).
             '''
 
-            key = args[0]
-            excs = tuple(exceptions) if exceptions else (exception,)
-
-            gc = self._global_config_get(key, value, conf)
-
-            try:
-                l3overlay.daemon.read(gc)
-                raise RuntimeError('''l3overlay.daemon.read unexpectedly returned successfully
-    Expected exception types: %s
-    Arguments: %s''' % (str.join(", ", (e.__name__ for e in excs)), gc))
-
-            except excs:
-                pass
-
-
-        def assert_default(self, *args, expected_value=None):
-            '''
-            Test that the default value works properly when reprocessed.
-            The point is to test that the default value is valid input.       
-            '''
-
-            key = args[0]
-
-            daemon = l3overlay.daemon.read(self.global_conf)
-            actual_value = vars(daemon)[key]
-
-            if expected_value:
-                self.assertEqual(actual_value, expected_value)
-
-            # Feed the default value as an explicit value into the creation
-            # of an object, to make sure it can be processed correctly.
-            self.assert_success(key, value=actual_value, expected_value=actual_value)
+            key = internal_key if internal_key else args[0]
+            return vars(obj)[key]
 
 
         def assert_boolean(self, *args, test_default=False):
@@ -135,30 +110,20 @@ class DaemonBaseTest(object):
             gc = self.global_conf.copy()
             gc[key] = False
             gc.pop(no_key)
-            self.assert_success(no_key, object_key=key, value=False, expected_value=False, conf=gc)
-            self.assert_success(no_key, object_key=key, value="false", expected_value=False, conf=gc)
-            self.assert_success(no_key, object_key=key, value=0, expected_value=False, conf=gc)
-            self.assert_success(no_key, object_key=key, value=-1, expected_value=False, conf=gc)
+            self.assert_success(no_key, internal_key=key, value=False, expected_value=False, conf=gc)
+            self.assert_success(no_key, internal_key=key, value="false", expected_value=False, conf=gc)
+            self.assert_success(no_key, internal_key=key, value=0, expected_value=False, conf=gc)
+            self.assert_success(no_key, internal_key=key, value=-1, expected_value=False, conf=gc)
 
             # Test invalid values.
-            self.assert_fail(key, value="", exception=util.GetError)
-            self.assert_fail(key, value=util.random_string(6), exception=util.GetError)
+            gc = self.global_conf.copy()
+            gc.pop(key)
+            gc[no_key] = True
+            self.assert_fail(key, value="", exception=util.GetError, conf=gc)
+            self.assert_fail(key, value=util.random_string(6), exception=util.GetError, conf=gc)
 
-
-        #
-        ##
-        #
-
-        def _global_config_get(self, key, value, conf=None):
-            '''
-            Create an instance of the global config, based off either the
-            class variable or a given config dict, optionally specifying
-            a given key to override its value with.
-            '''
-
-            gc = conf.copy() if conf else self.global_conf.copy()
-
-            if value is not None:
-                gc[key] = value
-
-            return gc
+            gc = self.global_conf.copy()
+            gc[key] = False
+            gc.pop(no_key)
+            self.assert_fail(no_key, value="", exception=util.GetError, conf=gc)
+            self.assert_fail(no_key, value=util.random_string(6), exception=util.GetError, conf=gc)

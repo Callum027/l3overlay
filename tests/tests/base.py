@@ -99,8 +99,41 @@ class BaseTest(object):
         #
 
 
+        def config_get(self, *args, value=None, conf=None):
+            '''
+            Create an object config instance, using the given arguments
+            to override values in it. An existing config instance can also
+            be specified to base the result from, rather than the test class
+            default.
+            '''
+
+            raise NotImplementedError()
+
+
+        def object_get(self, conf=None):
+            '''
+            Create an object instance, use assertIsInstance to ensure
+            it is of the correct type, and return it.
+            '''
+
+            raise NotImplementedError()
+
+
+        def value_get(self, *args, obj=None, internal_key=None):
+            '''
+            Get a value from the given object, using the supplied
+            key-value pair (and internal key if used).
+            '''
+
+            raise NotImplementedError()
+
+
+        #
+        ##
+        #
+
         def assert_success(self, *args,
-                           object_key=None,
+                           internal_key=None,
                            value=None, expected_value=None,
                            conf=None):
             '''
@@ -122,12 +155,12 @@ class BaseTest(object):
                   input value, or the given expected value/key
             '''
 
-            obj = self.object_get(self.config_get(*args, conf=conf))
+            obj = self.object_get(self.config_get(*args, value=value, conf=conf))
 
             if expected_value is not None:
                 self.assertEqual(
                     expected_value,
-                    self.value_get(*args, internal_key=internal_key),
+                    self.value_get(*args, obj=obj, internal_key=internal_key),
                 )
 
 
@@ -154,7 +187,7 @@ class BaseTest(object):
             exceptions = tuple(exceptions) if exceptions else (exception,)
 
             try:
-                object_conf = self.config_get(*args, conf=conf)
+                object_conf = self.config_get(*args, value=value, conf=conf)
                 self.object_get(object_conf)
                 raise RuntimeError('''object_get unexpectedly returned successfully
     Expected exception types: %s
