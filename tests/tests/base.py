@@ -184,6 +184,9 @@ class BaseTest(object):
               re-raise an unexpected exception if one was thrown
             '''
 
+            if not exception and not exceptions:
+                raise RuntimeError("need to define one of 'exception' and 'exceptions'")
+
             exceptions = tuple(exceptions) if exceptions else (exception,)
 
             try:

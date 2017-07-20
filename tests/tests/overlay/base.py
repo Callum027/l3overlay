@@ -68,9 +68,16 @@ class OverlayBaseTest(object):
         #
 
 
-        def config_get(self, *args, conf=None):
+        def config_get(self, *args, value=None, conf=None):
             '''
             '''
+
+            if len(args) > 1:
+                section = args[0]
+                key = args[1]
+            else:
+                section = None
+                key = args[0] if args else None
 
             oc = copy.deepcopy(conf) if conf else copy.deepcopy(self.overlay_conf)
 
@@ -96,8 +103,8 @@ class OverlayBaseTest(object):
                     oc[key] = value
 
             # Need either at least key specified!
-            else:
-                raise RuntimeError("key not specified")
+            elif value:
+                raise RuntimeError("value specified but key not specified")
 
             return oc
 
@@ -125,16 +132,24 @@ class OverlayBaseTest(object):
             '''
 
             section = args[0]
-            key = internal_key if internal_key else args[1]
 
-            key = k.replace("-", "_")
+            key = internal_key if internal_key else args[1]
+            key = key.replace("-", "_")
 
             if section == "overlay":
                 return vars(obj)[key]
+
             elif section.startswith("static"):
                 name = util.section_name_get(section)
                 for si in obj.static_interfaces:
                     if name == si.name:
                         return vars(si)[key]
+
+            elif section.startswith("active"):
+                name = util.section_name_get(section)
+                for ai in obj.active_interfaces:
+                    if name == ai.name:
+                        return vars(ai)[key]
+
             else:
                 raise RuntimeError("unknown section type '%s'" % section)

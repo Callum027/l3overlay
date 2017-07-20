@@ -51,11 +51,11 @@ class DaemonBaseTest(object):
             default.
             '''
 
-            key = args[0]
+            key = args[0] if args else None
 
             gc = conf.copy() if conf else self.global_conf.copy()
 
-            if value is not None:
+            if key and value is not None:
                 gc[key] = value
 
             return gc
