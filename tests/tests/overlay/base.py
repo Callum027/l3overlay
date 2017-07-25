@@ -72,7 +72,9 @@ class OverlayBaseTest(object):
             '''
             '''
 
-            if len(args) > 1:
+            if len(args) > 2:
+                raise RuntimeError("unrecognised non-keyword arguments: %s" % ",".join(args[2:]))
+            elif len(args) == 2:
                 section = args[0]
                 key = args[1]
             else:
@@ -131,12 +133,19 @@ class OverlayBaseTest(object):
             key-value pair (and internal key if used).
             '''
 
-            section = args[0]
+            if len(args) > 2:
+                raise RuntimeError("unrecognised non-keyword arguments: %s" % ",".join(args[2:]))
+            elif len(args) == 2:
+                section = args[0]
+                key = args[1]
+            else:
+                section = None
+                key = args[0]
 
-            key = internal_key if internal_key else args[1]
+            key = internal_key if internal_key else key
             key = key.replace("-", "_")
 
-            if section == "overlay":
+            if not section or section == "overlay":
                 return vars(obj)[key]
 
             elif section.startswith("static"):

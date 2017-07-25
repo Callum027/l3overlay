@@ -158,6 +158,7 @@ class Daemon(worker.Worker):
             self.set_settingup()
 
             self._gre_keys = {}
+            self._ipsec_tunnels = {}
             self._interface_names = set()
 
             self.mesh_links = set()
@@ -336,7 +337,7 @@ class Daemon(worker.Worker):
             self._gre_keys[link] = set()
 
         if key in self._gre_keys[link]:
-            raise KeyUsedTwiceError(local, remote, key)
+            raise KeyAddedTwiceError(local, remote, key)
         else:
             self._gre_keys[link].add(key)
 

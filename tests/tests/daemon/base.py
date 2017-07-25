@@ -51,6 +51,9 @@ class DaemonBaseTest(object):
             default.
             '''
 
+            if len(args) > 1:
+                raise RuntimeError("unrecognised non-keyword arguments: %s" % ",".join(args[1:]))
+
             key = args[0] if args else None
 
             gc = conf.copy() if conf else self.global_conf.copy()
@@ -78,6 +81,9 @@ class DaemonBaseTest(object):
             Get a value from the given object, using the supplied
             key-value pair (and internal key if used).
             '''
+
+            if len(args) > 1:
+                raise RuntimeError("unrecognised non-keyword arguments: %s" % ",".join(args[1:]))
 
             key = internal_key if internal_key else args[0]
             return vars(obj)[key]

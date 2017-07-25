@@ -20,7 +20,9 @@
 
 from l3overlay import util
 
+from l3overlay.network.interface import bridge
 from l3overlay.network.interface import gre
+from l3overlay.network.interface import veth
 
 from l3overlay.overlay import active_interface
 
@@ -48,7 +50,7 @@ class ExternalTunnel(StaticInterface):
     '''
 
     def __init__(self, logger, name,
-                mode, local, remote, address, netmask,
+                local, remote, address, netmask,
                 key, ikey, okey,
                 use_ipsec, ipsec_psk):
         '''
@@ -57,7 +59,6 @@ class ExternalTunnel(StaticInterface):
 
         super().__init__(logger, name)
 
-        self.mode = mode
         self.local = local
         self.remote = remote
         self.address = address
@@ -82,7 +83,7 @@ class ExternalTunnel(StaticInterface):
 
         if key:
             self.daemon.gre_key_add(self.local, self.remote, key)
-        if use_ipsec:
+        if self.use_ipsec:
             self.daemon.ipsec_tunnel_add(self.local, self.remote, self.ipsec_psk)
 
         self.tunnel_name = self.daemon.interface_name(self.name, limit=13)
@@ -102,7 +103,7 @@ class ExternalTunnel(StaticInterface):
             self.dry_run,
             self.logger,
             self.tunnel_name,
-            self.mode,
+            "gretap",
             self.local,
             self.remote,
             key=self.key,
@@ -121,7 +122,6 @@ class ExternalTunnel(StaticInterface):
 
         netns_veth_if = root_veth_if.peer_get(peer_netns=self.netns)
         netns_veth_if.netns_set(self.netns)
-        netns_veth_if.add_ip(self.address, self.netmask)
 
         bridge_if = bridge.create(
             self.dry_run,
@@ -132,12 +132,14 @@ class ExternalTunnel(StaticInterface):
         bridge_if.add_port(tunnel_if)
         bridge_if.add_port(root_veth_if)
 
+        netns_veth_if.add_ip(self.address, self.netmask)
+
         tunnel_if.up()
         root_veth_if.up()
         netns_veth_if.up()
         bridge_if.up()
 
-        self.logger.info("finished starting external static external tunnel '%s'" % self.name)
+        self.logger.info("finished starting static external tunnel '%s'" % self.name)
 
 
     def stop(self):
@@ -155,7 +157,7 @@ class ExternalTunnel(StaticInterface):
             self.netns_veth_name,
             root_ipdb=self.root_ipdb,
         ).remove()
-        gre.get(self.dry_run, self.logger, self.tunnel_name, self.mode, root_ipdb=self.root_ipdb).remove()
+        gre.get(self.dry_run, self.logger, self.tunnel_name, "gretap", root_ipdb=self.root_ipdb).remove()
 
         self.logger.info("finished stopping static external tunnel '%s'" % self.name)
 
@@ -165,8 +167,9 @@ class ExternalTunnel(StaticInterface):
         Remove the static external tunnel.
         '''
 
-        self.daemon.gre_key_remove(self.local, self.remote, self.key if self.key else self.ikey)
-        self.daemon.ipsec_tunnel_remove(self.local, self.remote)
+        if self.use_ipsec:
+            self.daemon.gre_key_remove(self.local, self.remote, self.key if self.key else self.ikey)
+            self.daemon.ipsec_tunnel_remove(self.local, self.remote)
 
 
     def is_ipv6(self):
@@ -184,7 +187,11 @@ class ExternalTunnel(StaticInterface):
         physical interfaces this static interface uses.
         '''
 
-        return (active_interface.create(self.logger, self.tunnel_name, self.netns.name),)
+        return (
+            active_interface.create(self.logger, self.bridge_name, None),
+            active_interface.create(self.logger, self.root_veth_name, None),
+            active_interface.create(self.logger, self.tunnel_name, None),
+        )
 
 StaticInterface.register(ExternalTunnel)
 
@@ -194,7 +201,6 @@ def read(logger, name, config):
     Create a static external tunnel from the given configuration object.
     '''
 
-    mode = util.enum_get(config["mode"], ["gre", "gretap"])
     local = util.ip_address_get(config["local"])
     remote = util.ip_address_get(config["remote"])
     address = util.ip_address_get(config["address"])
@@ -215,7 +221,7 @@ def read(logger, name, config):
 
     return ExternalTunnel(
         logger, name,
-        mode, local, remote, address, netmask,
+        local, remote, address, netmask,
         key, ikey, okey,
         use_ipsec, ipsec_psk,
     )
@@ -226,7 +232,6 @@ def write(external_tunnel, config):
     Write the static external tunnel to the given configuration object.
     '''
 
-    config["mode"] = external_tunnel.mode.lower()
     config["local"] = str(external_tunnel.local)
     config["remote"] = str(external_tunnel.remote)
     config["address"] = str(external_tunnel.address)
@@ -239,6 +244,6 @@ def write(external_tunnel, config):
     if external_tunnel.okey:
         config["okey"] = str(external_tunnel.okey)
 
-    config["use-ipsec"] = str(external_tunnel.use_ipsec)
+    config["use-ipsec"] = str(external_tunnel.use_ipsec).lower()
     if external_tunnel.ipsec_psk:
         config["ipsec-psk"] = external_tunnel.ipsec_psk

@@ -24,7 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
 class StaticTuntapTest(StaticInterfaceBaseTest.Class):
@@ -63,7 +63,7 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
         Test that 'mode' is properly handled by the static tuntap interface.
         '''
 
-        self.assert_enum(self.section, "mode", ["tun", "tap"])
+        self.assert_enum(self.section, "mode", enum=["tun", "tap"])
 
 
     def test_address_netmask(self):

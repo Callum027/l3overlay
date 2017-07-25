@@ -122,13 +122,13 @@ class OverlayTest(OverlayBaseTest.Class):
         self.assert_value(
             "overlay",
             "fwbuilder-script",
-            "test_fwbuilder_script.conf",
+            value="test_fwbuilder_script.conf",
         )
 
         self.assert_value(
             "overlay",
             "fwbuilder-script",
-            os.path.join(
+            value=os.path.join(
                 self.global_conf["fwbuilder_script_dir"],
                 "test_fwbuilder_script.conf",
             ),
