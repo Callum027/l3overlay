@@ -68,12 +68,10 @@ class Process(Worker):
         self.ipsec_conf_template = util.template_read(self.template_dir,"ipsec.conf")
         self.ipsec_secrets_template = util.template_read(self.template_dir, "ipsec.secrets")
 
-        # Create a dictionary which maps the name of the IPsec
-        # connection to a tuple containing the local and remote addresses.
-        self.mesh_conns = dict(zip(
-            ["%s-%s" % (m[0], m[1]) for m in daemon.mesh_links],
-            daemon.mesh_links,
-        ))
+        # Conn name to link mapping.
+        self.conns = dict(
+            (("%s-%s" % (link[0], link[1]), link) for link in daemon.ipsec_tunnels.keys()),
+        )
 
         self.ipsec = util.command_path("ipsec") if not self.dry_run else util.command_path("true")
 
@@ -96,12 +94,12 @@ class Process(Worker):
                 f.write(self.ipsec_conf_template.render(
                     file=self.ipsec_conf,
                     ipsec_manage=self.ipsec_manage,
-                    mesh_conns=self.mesh_conns,
+                    conns=self.conns,
                 ))
 
         self.logger.debug("creating IPsec secrets file '%s'" % self.ipsec_secrets)
         addresses = set()
-        for local, remote in self.mesh_conns.values():
+        for local, remote in self.conns.values():
             addresses.add(local)
             addresses.add(remote)
         if not self.dry_run:
@@ -175,7 +173,7 @@ class Process(Worker):
             if not self.dry_run:
                 subprocess.check_output([self.ipsec, "reload"], stderr=subprocess.STDOUT)
 
-            for conn in self.mesh_conns:
+            for conn in self.conns:
                 self.logger.debug("shutting down IPsec tunnel '%s'" % conn)
                 if not self.dry_run:
                     subprocess.check_output(

@@ -158,7 +158,7 @@ class Daemon(worker.Worker):
             self.set_settingup()
 
             self._gre_keys = {}
-            self._ipsec_tunnels = {}
+            self.ipsec_tunnels = {}
             self._interface_names = set()
 
             self.mesh_links = set()
@@ -365,16 +365,21 @@ class Daemon(worker.Worker):
 
         link = (local, remote)
 
-        if link not in self._ipsec_tunnels:
-            self._ipsec_tunnels[link] = {
-                "ipsec-psk": ipsec_psk,
+        if link not in self.ipsec_tunnels:
+            self.ipsec_tunnels[link] = {
+                "ipsec-psks": [ipsec_psk],
                 "num": 1,
             }
         else:
-            if self._ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
-                self._ipsec_tunnels[link]["num"] += 1
+            if self.ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
+                self.ipsec_tunnels[link]["num"] += 1
             else:
-                raise MismatchedIPsecPSKError(local, remote, ipsec_psk)
+                raise MismatchedIPsecPSKError(
+                    local,
+                    remote,
+                    self.ipsec_tunnels[link]["ipsec-psk"],
+                    ipsec_psk,
+                )
 
 
     def ipsec_tunnel_remove(self, local, remote):
@@ -389,7 +394,7 @@ class Daemon(worker.Worker):
             return
 
         if key in self._gre_keys[link]:
-            self._ipsec_tunnels[link].remove(key)
+            self.ipsec_tunnels[link].remove(key)
 
 
     def interface_name(self, name, suffix=None, limit=15):
