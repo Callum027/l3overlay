@@ -45,6 +45,22 @@ class NoOverlayConfError(L3overlayError):
     def __init__(self):
         super().__init__("no overlay configuration files found")
 
+class MeshLinkNonexistentError(L3overlayError):
+    def __init__(self, local, remote):
+        super().__init__("unable to delete non-existent mesh link (%s, %s)" % (local, remote))
+
+class IPsecTunnelMismatchedPSKError(L3overlayError):
+    def __init__(self, local, remote, expected_psk, actual_psk):
+        super().__init__(
+            "increasing usage count on already added IPsec tunnel (%s, %s) failed:" +
+            "expected PSK '%s', got '%s'" %
+                    (local, remote, expected_psk, actual_psk)
+        )
+
+class IPsecTunnelNonexistentError(L3overlayError):
+    def __init__(self, local, remote):
+        super().__init__("unable to delete non-existent IPsec tunnel (%s, %s)" % (local, remote))
+
 class ReadError(L3overlayError):
     pass
 
@@ -157,11 +173,13 @@ class Daemon(worker.Worker):
         try:
             self.set_settingup()
 
-            self._gre_keys = {}
-            self.ipsec_tunnels = {}
             self._interface_names = set()
 
+            self._gre_keys = {}
+
             self.mesh_links = set()
+            self.ipsec_tunnels = {}
+
             self.root_ipdb = pyroute2.IPDB() if not self.dry_run else None
         except Exception as e:
             if self.logger.is_running():
@@ -325,6 +343,36 @@ class Daemon(worker.Worker):
             raise
 
 
+    def interface_name(self, name, suffix=None, limit=15):
+        '''
+        Returns a valid, unique (to this daemon daemon) interface name
+        based on the given base name string
+        '''
+
+        ifname_num = 0
+
+        while True:
+            digits = len(str(ifname_num))
+
+            if suffix:
+                ifname_base = "%s%s" % (
+                    re.sub("[^A-Za-z0-9]", "", name)[:limit - len(suffix) - digits],
+                    suffix,
+                )
+            else:
+                ifname_base = re.sub("[^A-Za-z0-9]", "", name)[:limit - digits]
+
+            ifname = "%s%i" % (ifname_base, ifname_num)
+
+            if ifname not in self._interface_names:
+                break
+
+            ifname_num += 1
+
+        self._interface_names.add(ifname)
+        return ifname
+
+
     def gre_key_add(self, local, remote, key):
         '''
         Add a unique (to this daemon) key value for the given
@@ -357,6 +405,33 @@ class Daemon(worker.Worker):
             self._gre_keys[link].remove(key)
 
 
+    def mesh_link_add(self, local, remote):
+        '''
+        '''
+
+        link = (local, remote)
+
+        if not link in self.mesh_links:
+            self.mesh_links[link] = 0
+
+        self.mesh_links[link] += 1
+
+
+    def mesh_link_remove(self, local, remote):
+        '''
+        '''
+
+        link = (local, remote)
+
+        if link in self.mesh_links:
+            if self.mesh_links[link] <= 1:
+                del self.mesh_links[link]
+            else:
+                self.mesh_links[link] -= 1
+        else:
+            raise MeshLinkNonexistentError(local, remote)
+
+
     def ipsec_tunnel_add(self, local, remote, ipsec_psk=None):
         '''
         Add a unique (to this daemon) key value for the given
@@ -367,19 +442,19 @@ class Daemon(worker.Worker):
 
         if link not in self.ipsec_tunnels:
             self.ipsec_tunnels[link] = {
-                "ipsec-psks": [ipsec_psk],
-                "num": 1,
+                "ipsec-psk": ipsec_psk,
+                "num": 0,
             }
+
+        if self.ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
+            self.ipsec_tunnels[link]["num"] += 1
         else:
-            if self.ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
-                self.ipsec_tunnels[link]["num"] += 1
-            else:
-                raise MismatchedIPsecPSKError(
-                    local,
-                    remote,
-                    self.ipsec_tunnels[link]["ipsec-psk"],
-                    ipsec_psk,
-                )
+            raise IPsecTunnelMismatchedPSKError(
+                local,
+                remote,
+                self.ipsec_tunnels[link]["ipsec-psk"],
+                ipsec_psk,
+            )
 
 
     def ipsec_tunnel_remove(self, local, remote):
@@ -390,41 +465,13 @@ class Daemon(worker.Worker):
 
         link = (local, remote)
 
-        if link not in self._gre_keys:
-            return
-
-        if key in self._gre_keys[link]:
-            self.ipsec_tunnels[link].remove(key)
-
-
-    def interface_name(self, name, suffix=None, limit=15):
-        '''
-        Returns a valid, unique (to this daemon daemon) interface name
-        based on the given base name string
-        '''
-
-        ifname_num = 0
-
-        while True:
-            digits = len(str(ifname_num))
-
-            if suffix:
-                ifname_base = "%s%s" % (
-                    re.sub("[^A-Za-z0-9]", "", name)[:limit - len(suffix) - digits],
-                    suffix,
-                )
+        if link in self.ipsec_tunnels:
+            if self.ipsec_tunnels[link]["num"] <= 1:
+                del self.ipsec_tunnels[link]
             else:
-                ifname_base = re.sub("[^A-Za-z0-9]", "", name)[:limit - digits]
-
-            ifname = "%s%i" % (ifname_base, ifname_num)
-
-            if ifname not in self._interface_names:
-                break
-
-            ifname_num += 1
-
-        self._interface_names.add(ifname)
-        return ifname
+                self.ipsec_tunnels[link]["num"] -= 1
+        else:
+            raise IPsecTunnelNonexistentError(local, remote)
 
 worker.Worker.register(Daemon)
 

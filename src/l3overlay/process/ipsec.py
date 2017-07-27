@@ -68,10 +68,9 @@ class Process(Worker):
         self.ipsec_conf_template = util.template_read(self.template_dir,"ipsec.conf")
         self.ipsec_secrets_template = util.template_read(self.template_dir, "ipsec.secrets")
 
-        # Conn name to link mapping.
-        self.conns = dict(
-            (("%s-%s" % (link[0], link[1]), link) for link in daemon.ipsec_tunnels.keys()),
-        )
+        self.conns = dict()
+        self.conns.update(Process.conns_get(self.mesh_links))
+        self.conns.update(Process.conns_get(self.ipsec_tunnels.keys()))
 
         self.ipsec = util.command_path("ipsec") if not self.dry_run else util.command_path("true")
 
@@ -97,6 +96,7 @@ class Process(Worker):
                     conns=self.conns,
                 ))
 
+        # TODO: modify this to work!
         self.logger.debug("creating IPsec secrets file '%s'" % self.ipsec_secrets)
         addresses = set()
         for local, remote in self.conns.values():
@@ -184,6 +184,17 @@ class Process(Worker):
         self.logger.info("finished stopping IPsec process")
 
         self.set_stopped()
+
+
+    @staticmethod
+    def conns_get(links):
+        '''
+        Create a dictionary, generating key-value pairs where
+        links are keyed by link names generated from them,
+        from a regular iterable of links.
+        '''
+
+        return dict(("%s-%s" % (link[0], link[1]), link) for link in links)
 
 Worker.register(Process)
 
