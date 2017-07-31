@@ -21,7 +21,7 @@ The following software packages are required to run l3overlay:
 * **Python**, version **3.4** or later
 * **iproute2**
 * **BIRD** routing daemon, version **1.4.3** or later
-* **strongSwan** IPsec (if `use-ipsec` is set to `true` in `global.conf`)
+* **strongSwan** IPsec and its optional OpenSSL plugin (if `use-ipsec` is set to `true` in `global.conf`)
 
 The following Python modules are also required to run l3overlay:
 
