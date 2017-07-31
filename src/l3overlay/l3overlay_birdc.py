@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/l3overlay_birdc.py - l3overlay-birdc helper script
+# l3overlay/l3overlay_birdc.py - l3overlay overlay-specific birdc wrapper
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -74,7 +74,7 @@ def main():
     overlay_name = args["overlay_name"]
     use_bird6 = args["use_bird6"]
 
-    if "lib_dir" in args:
+    if args["lib_dir"]:
         lib_dir = args["lib_dir"]
     else:
         global_conf = args["global_conf"] if "global_conf" in args else util.path_search("global.conf")
@@ -82,8 +82,9 @@ def main():
         lib_dir = config["lib-dir"] if config and "lib-dir" in config else os.path.join(util.path_root(), "var", "lib", "l3overlay")
 
     # Build birdc command line arguments.
-    birdc_args = ["-c", os.path.join(self.lib_dir, "overlays", overlay_name, "run", "bird", "bird6.ctl" if use_bird6 else "bird.ctl")]
-    birdc_args.update(birdc_user_args)
+    birdc_args = [birdc, "-s", os.path.join(lib_dir, "overlays", overlay_name, "run", "bird", "bird6.ctl" if use_bird6 else "bird.ctl")]
+    if birdc_user_args:
+        birdc_args.extend(birdc_user_args)
 
     # Use the exec system call to replace this script with
     # birdc instance directly.

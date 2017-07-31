@@ -24,7 +24,8 @@ import signal
 import stat
 import sys
 
-import l3overlay.daemon
+from l3overlay import daemon
+from l3overlay import util
 
 
 class Main(object):
@@ -105,7 +106,7 @@ class Main(object):
         self.daemon.stop()
         self.daemon.remove()
 
-        self.daemon = l3overlay.daemon.read(self.args)
+        self.daemon = daemon.read(self.args)
         self.daemon.setup()
 
         try:
@@ -278,7 +279,7 @@ class Main(object):
 
         # Create the daemon object, which tracks l3overlay state.
         # After the daemon object is created, we can log output.
-        self.daemon = l3overlay.daemon.read(self.args)
+        self.daemon = daemon.read(self.args)
         self.daemon.setup()
 
         # Time to start up the daemon!
