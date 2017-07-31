@@ -639,15 +639,14 @@ def read(args):
             default = os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
         )
 
-        ipsec_conf = reader.path_get(
-            "ipsec-conf",
-            default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
-        )
-        ipsec_secrets = reader.path_get(
-            "ipsec-secrets",
-            default = os.path.join(util.path_root(), "etc",
-                    "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
-        )
+        if ipsec_manage:
+            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.conf")
+            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.secrets")
+        else:
+            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf")
+            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.l3overlay.secrets")
+        ipsec_conf = reader.path_get("ipsec-conf", default=ipsec_conf_default)
+        ipsec_secrets = reader.path_get("ipsec-secrets", default=ipsec_secrets_default)
 
         # Get overlay configuration file paths.
         overlay_confs = args["overlay_conf"]

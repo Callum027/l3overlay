@@ -58,19 +58,23 @@ class Process(Worker):
             return
 
         self.ipsec_manage = daemon.ipsec_manage
-        self.ipsec_psk = daemon.ipsec_psk
 
         self.template_dir = daemon.template_dir
 
         self.ipsec_conf = daemon.ipsec_conf
         self.ipsec_secrets = daemon.ipsec_secrets
 
-        self.ipsec_conf_template = util.template_read(self.template_dir,"ipsec.conf")
+        self.ipsec_conf_template = util.template_read(self.template_dir, "ipsec.conf")
         self.ipsec_secrets_template = util.template_read(self.template_dir, "ipsec.secrets")
 
         self.conns = dict()
-        self.conns.update(Process.conns_get(self.mesh_links))
-        self.conns.update(Process.conns_get(self.ipsec_tunnels.keys()))
+        self.secrets = dict()
+
+        for link in daemon.mesh_links:
+            self.tunnel_add(link, daemon.ipsec_psk)
+        for link, data in daemon.ipsec_tunnels.items():
+            if data["ipsec-psk"]:
+                self.tunnel_add(link, data["ipsec-psk"])
 
         self.ipsec = util.command_path("ipsec") if not self.dry_run else util.command_path("true")
 
@@ -96,7 +100,6 @@ class Process(Worker):
                     conns=self.conns,
                 ))
 
-        # TODO: modify this to work!
         self.logger.debug("creating IPsec secrets file '%s'" % self.ipsec_secrets)
         addresses = set()
         for local, remote in self.conns.values():
@@ -106,8 +109,7 @@ class Process(Worker):
             with open(self.ipsec_secrets, "w") as f:
                 f.write(self.ipsec_secrets_template.render(
                     file=self.ipsec_secrets,
-                    addresses=addresses,
-                    secret=self.ipsec_psk,
+                    secrets=self.secrets,
                 ))
 
         self.logger.debug("checking IPsec status")
@@ -186,15 +188,17 @@ class Process(Worker):
         self.set_stopped()
 
 
-    @staticmethod
-    def conns_get(links):
+    def tunnel_add(self, link, psk):
         '''
-        Create a dictionary, generating key-value pairs where
-        links are keyed by link names generated from them,
-        from a regular iterable of links.
+        Add an IPsec tunnel and its corresponding PSK to the
+        database which gets used to configure the IPsec process.
         '''
 
-        return dict(("%s-%s" % (link[0], link[1]), link) for link in links)
+        self.conns["%s-%s" % link] = link
+
+        if not psk in self.secrets:
+            self.secrets[psk] = set()
+        self.secrets[psk].update(link)
 
 Worker.register(Process)
 
