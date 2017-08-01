@@ -35,7 +35,7 @@ def main():
     # Parse arguments.
     argparser = argparse.ArgumentParser(
         description="l3overlay overlay-specific birdc wrapper.",
-        usage="%(prog)s [-h] [-gc FILE] [-Ld DIR] [-6] OVERLAY [BIRDC-ARGS...]",
+        usage="%(prog)s [-h] [-gc FILE] [-Ld DIR] [-6] OVERLAY [BIRDC-ARG [BIRDC-ARG...]]",
     )
 
     argparser.add_argument(

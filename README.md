@@ -44,7 +44,7 @@ l3overlay can be installed to the default location by simply using:
 
     sudo make install
 
-By default, this will install the `l3overlayd` executable into `/usr/local/sbin`.
+By default, this will install the executables into `/usr/local/sbin`.
 
 See the `Makefile` for more details on how to change the installation locations.
 
@@ -116,6 +116,25 @@ optional arguments:
                         write IPsec configuration to FILE
   -is FILE, --ipsec-secrets FILE
                         write IPsec secrets to FILE
+```
+
+Also installed alongside `l3overlayd` is `l3overlay-birdc`, a wrapper script to `birdc` that uses the l3overlay configuration to allow it to easily connect to an overlay's internal BIRD server, without the user having to find its control socket file.
+
+```
+usage: l3overlay-birdc [-h] [-gc FILE] [-Ld DIR] [-6] OVERLAY [BIRDC-ARG [BIRDC-ARG...]]
+
+l3overlay overlay-specific birdc wrapper.
+
+positional arguments:
+  OVERLAY               launch birdc under overlay OVERLAY
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -gc FILE, --global-conf FILE
+                        use FILE as the global configuration file
+  -Ld DIR, --lib-dir DIR
+                        use DIR as the runtime data directory (overrides -gc)
+  -6, --use-bird6       launch birdc for bird6 (default is bird4)
 ```
 
 Example configuration
