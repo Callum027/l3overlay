@@ -71,7 +71,7 @@ class MeshTunnel(StaticInterface):
         self.asn = self.overlay.asn
 
         self.daemon.gre_key_add(self.physical_local, self.physical_remote, self.asn)
-        self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
+        self.daemon.mesh_link_add(self.physical_local, self.physical_remote)
 
 
     def start(self):
@@ -150,6 +150,7 @@ class MeshTunnel(StaticInterface):
         '''
 
         self.daemon.gre_key_remove(self.physical_local, self.physical_remote, self.asn)
+        self.daemon.mesh_link_remove(self.physical_local, self.physical_remote)
 
 
     def is_ipv6(self):

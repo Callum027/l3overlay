@@ -174,8 +174,8 @@ class NetNS(Worker):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        else:
-            return pyroute2.netns.process.proxy.NSPopen(self.name, *args, **kwargs)
+
+        return pyroute2.netns.process.proxy.NSPopen(self.name, *args, **kwargs)
 
 # pylint: disable=no-member
 Worker.register(NetNS)

@@ -552,8 +552,8 @@ class ValueReader(object):
             return self.args[arg_key]
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return self.config[config_key]
-        else:
-            return default
+
+        return default
 
 
     def boolean_get(self, key, check_args=True, args_optional=False, default=False):
@@ -587,8 +587,8 @@ class ValueReader(object):
             return False
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.boolean_get(self.config[config_key])
-        else:
-            return default
+
+        return default
 
 
     def path_get(self, key, check_args=True, args_optional=False, default=None):
@@ -611,8 +611,8 @@ class ValueReader(object):
             return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
-        else:
-            return default
+
+        return default
 
 
 def read(args):
@@ -699,7 +699,7 @@ def read(args):
                 overlay_confs = tuple(
                     util.path_get(overlay_confs, relative_dir=os.getcwd()),
                 )
-            elif isinstance(overlay_confs, list) or isinstance(overlay_confs, dict):
+            elif isinstance(overlay_confs, (list, dict)):
                 overlay_confs = tuple(
                     (util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs),
                 )
