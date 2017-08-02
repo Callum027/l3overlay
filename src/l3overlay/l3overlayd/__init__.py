@@ -18,6 +18,11 @@
 #
 
 
+'''
+l3overlayd main routine.
+'''
+
+
 import argparse
 import os
 import signal
@@ -43,6 +48,7 @@ class Main(object):
         self.daemon = None
 
 
+    # pylint: disable=unused-argument
     def sigterm(self, signum, frame):
         '''
         Shut down the daemon upon shutdown signal, and exit.
@@ -58,9 +64,9 @@ class Main(object):
         try:
             self.daemon.logger.debug("removing PID file")
             util.file_remove(self.daemon.pid)
-        except Exception as e:
+        except Exception as exc:
             if self.daemon.logger.is_started():
-                self.daemon.logger.exception(e)
+                self.daemon.logger.exception(exc)
             raise
 
         self.daemon.remove()
@@ -68,6 +74,7 @@ class Main(object):
         sys.exit(0)
 
 
+    # pylint: disable=unused-argument
     def sigint(self, signum, frame):
         '''
         Shut down the daemon upon keyboard interrupt, and exit.
@@ -83,9 +90,9 @@ class Main(object):
         try:
             self.daemon.logger.debug("removing PID file")
             util.file_remove(self.daemon.pid)
-        except Exception as e:
+        except Exception as exc:
             if self.daemon.logger.is_started():
-                self.daemon.logger.exception(e)
+                self.daemon.logger.exception(exc)
             raise
 
         self.daemon.remove()
@@ -93,6 +100,7 @@ class Main(object):
         sys.exit(0)
 
 
+    # pylint: disable=unused-argument
     def sighup(self, signum, frame):
         '''
         Shut down the daemon, make a new daemon to reload the configuration,
@@ -112,9 +120,9 @@ class Main(object):
 
         try:
             util.pid_create(self.daemon.pid)
-        except Exception as e:
+        except Exception as exc:
             if self.daemon.logger.is_started():
-                self.daemon.logger.exception(e)
+                self.daemon.logger.exception(exc)
             raise
 
         self.daemon.logger.debug("starting daemon")
@@ -129,51 +137,52 @@ class Main(object):
         Return a l3overlayd ArgumentParser object.
         '''
 
+        # pylint: disable=line-too-long
         argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
 
         # Configuration options.
         dry_run = argparser.add_mutually_exclusive_group(required=False)
         dry_run.add_argument(
             "-dr", "--dry-run",
-            action = "store_true",
-            help = "test configuration and daemon without modifying the system",
+            action="store_true",
+            help="test configuration and daemon without modifying the system",
         )
         dry_run.add_argument(
             "-ndr", "--no-dry-run",
-            action = "store_false",
-            help = "do NOT test configuration and daemon without modifying the system",
+            action="store_false",
+            help="do NOT test configuration and daemon without modifying the system",
         )
 
         argparser.add_argument(
             "-ll", "--log-level",
-            metavar = "LEVEL",
-            type = str,
-            default = None,
-            help = "use LEVEL as the logging level parameter",
+            metavar="LEVEL",
+            type=str,
+            default=None,
+            help="use LEVEL as the logging level parameter",
         )
 
         use_ipsec = argparser.add_mutually_exclusive_group(required=False)
         use_ipsec.add_argument(
             "-ui", "--use-ipsec",
-            action = "store_true",
-            help = "use IPsec encapsulation on the overlay mesh",
+            action="store_true",
+            help="use IPsec encapsulation on the overlay mesh",
         )
         use_ipsec.add_argument(
             "-nui", "--no-use-ipsec",
-            action = "store_false",
-            help = "do NOT use IPsec encapsulation on the overlay mesh",
+            action="store_false",
+            help="do NOT use IPsec encapsulation on the overlay mesh",
         )
 
         ipsec_manage = argparser.add_mutually_exclusive_group(required=False)
         ipsec_manage.add_argument(
             "-im", "--ipsec-manage",
-            action = "store_true",
-            help = "operate in IPsec daemon management mode",
+            action="store_true",
+            help="operate in IPsec daemon management mode",
         )
         ipsec_manage.add_argument(
             "-nim", "--no-ipsec-manage",
-            action = "store_false",
-            help = "do NOT operate in IPsec daemon management mode",
+            action="store_false",
+            help="do NOT operate in IPsec daemon management mode",
         )
 
         # No way we're having ipsec-psk as an argument, for obvious reasons.
@@ -181,83 +190,83 @@ class Main(object):
         # Directory paths.
         argparser.add_argument(
             "-ocd", "--overlay-conf-dir",
-            metavar = "DIR",
-            type = str,
-            default = None,
-            help = "use DIR as the overlay conf search directory",
+            metavar="DIR",
+            type=str,
+            default=None,
+            help="use DIR as the overlay conf search directory",
         )
 
         argparser.add_argument(
             "-td", "--template-dir",
-            metavar = "DIR",
-            type = str,
-            default = None,
-            help = "use DIR as the configuration template search directory",
+            metavar="DIR",
+            type=str,
+            default=None,
+            help="use DIR as the configuration template search directory",
         )
 
         argparser.add_argument(
             "-fsd", "--fwbuilder-script-dir",
-            metavar = "DIR",
-            type = str,
-            default = None,
-            help = "use DIR as the fwbuilder script search directory",
+            metavar="DIR",
+            type=str,
+            default=None,
+            help="use DIR as the fwbuilder script search directory",
         )
 
         argparser.add_argument(
             "-Ld", "--lib-dir",
-            metavar = "DIR",
-            type = str,
-            default = None,
-            help = "use DIR as the runtime data directory",
+            metavar="DIR",
+            type=str,
+            default=None,
+            help="use DIR as the runtime data directory",
         )
 
         # File paths.
         argparser.add_argument(
             "-gc", "--global-conf",
-            metavar = "FILE",
-            type = str,
-            default = None,
-            help = "use FILE as the global configuration file",
+            metavar="FILE",
+            type=str,
+            default=None,
+            help="use FILE as the global configuration file",
         )
 
         argparser.add_argument(
             "-oc", "--overlay-conf",
-            metavar = "FILE",
-            type = str,
-            nargs = "+",
-            default = None,
-            help = "configure the overlay defined in FILE, disables overlay config directory searching",
+            metavar="FILE",
+            type=str,
+            nargs="+",
+            default=None,
+            help="configure the overlay defined in FILE, disables overlay config directory searching",
         )
 
         argparser.add_argument(
             "-l", "--log",
-            metavar = "FILE",
-            type = str,
-            default = None,
-            help = "log output to FILE",
+            metavar="FILE",
+            type=str,
+            default=None,
+            help="log output to FILE",
         )
 
         argparser.add_argument(
             "-p", "--pid",
-            metavar = "FILE",
-            type = str,
-            default = None,
-            help = "write the daemon PID to FILE",
+            metavar="FILE",
+            type=str,
+            default=None,
+            help="write the daemon PID to FILE",
         )
 
         argparser.add_argument(
             "-ic", "--ipsec-conf",
-            metavar = "FILE",
-            type = str,
-            default = None,
-            help = "write IPsec configuration to FILE",
+            metavar="FILE",
+            type=str,
+            default=None,
+            help="write IPsec configuration to FILE",
         )
         argparser.add_argument(
             "-is", "--ipsec-secrets",
-            metavar = "FILE",
-            type = str,
-            default = None,
-            help = "write IPsec secrets to FILE",
+            metavar="FILE",
+            type=str,
+            default=None,
+            help="write IPsec secrets to FILE",
         )
 
         return argparser
@@ -297,9 +306,9 @@ class Main(object):
             signal.signal(signal.SIGTERM, self.sigterm)
             signal.signal(signal.SIGINT, self.sigint)
             signal.signal(signal.SIGHUP, self.sighup)
-        except Exception as e:
+        except Exception as exc:
             if self.daemon.logger.is_started():
-                self.daemon.logger.exception(e)
+                self.daemon.logger.exception(exc)
             raise
 
         # We're done! Time to block and wait for signals.
