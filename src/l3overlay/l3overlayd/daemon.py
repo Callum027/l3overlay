@@ -29,8 +29,9 @@ import shutil
 
 import pyroute2
 
+from l3overlay import util
+
 from l3overlay.l3overlayd import overlay
-from l3overlay.l3overlayd import util
 
 from l3overlay.l3overlayd.overlay.static_interface.overlay_link import OverlayLink
 from l3overlay.l3overlayd.overlay.static_interface.veth import VETH
@@ -620,6 +621,7 @@ def read(args):
     Create a daemon object using the given argument dictionary.
     '''
 
+    # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
 
@@ -654,7 +656,10 @@ def read(args):
         ipsec_manage = reader.boolean_get("ipsec-manage", default=True)
 
         _psk = reader.get("ipsec-psk", args_optional=True)
-        ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
+        if _psk is not None:
+            ipsec_psk = util.hex_get_string(_psk, mindigits=6, maxdigits=64)
+        else:
+            ipsec_psk = None
 
         # Get required directory paths.
         lib_dir = reader.path_get(

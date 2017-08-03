@@ -81,9 +81,7 @@ def dynamic_import(module_name, module_path):
         return module
 
 
-l3overlay = dynamic_import("l3overlay", "%(src_dir)s/l3overlay/__init__.py")
-l3overlayd = dynamic_import("l3overlay.l3overlayd", "%(src_dir)s/l3overlay/l3overlayd/__init__.py")
-
+l3overlayd = dynamic_import("l3overlay.l3overlayd.main", "%(src_dir)s/l3overlay/l3overlayd/main.py")
 l3overlayd.main()''' % {"src_dir": SRC_DIR})
 
         command = [util.command_path("python3"), test_py]

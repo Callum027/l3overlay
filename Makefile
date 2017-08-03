@@ -183,7 +183,7 @@ all:
 
 
 lint:
-	$(PYLINT) $(MODULE_DIR) 2>&1 | tee make-lint.log
+	$(PYLINT) $(MODULE_DIR) --disable=duplicate-code 2>&1 | tee make-lint.log
 	@echo "pylint output written to make-lint.log"
 
 
