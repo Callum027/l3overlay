@@ -292,6 +292,14 @@ class Daemon(Worker):
                         self.logger.info("cleaning up overlay '%s'" % overlay_name)
 
                         overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
+
+                        if not os.path.isfile(overlay_conf):
+                            self.logger.warning(
+                                "unable to find running config for overlay '%s', "
+                                "skipping cleanup" % overlay_name
+                            )
+                            continue
+
                         ove = overlay.read(self.log, self.log_level, conf=overlay_conf)
 
                         ove.setup(self)

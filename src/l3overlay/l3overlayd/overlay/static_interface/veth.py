@@ -281,7 +281,7 @@ def read(logger, name, config):
                 "if outer-interface-bridged is true",
             )
 
-        if not isinstance(type(inner_address), outer_address):
+        if not isinstance(inner_address, type(outer_address)):
             raise ReadError(
                 "inner-address '%s' (%s) and outer-address '%s' (%s) "
                 "must be the same type of IP address" %

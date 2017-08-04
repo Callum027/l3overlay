@@ -197,7 +197,7 @@ def path_get(value, relative_dir=None):
     if os.path.isabs(value):
         return value
     elif relative_dir is not None:
-        return os.path.join(relative_dir, value)
+        return os.path.abspath(os.path.join(relative_dir, value))
     else:
         raise GetError("value '%s' not a fully qualified file system path" % value)
 
@@ -699,14 +699,14 @@ def config(conf=None):
     Parse a given configuration file, and return its configuration object.
     '''
 
-    con = configparser.ConfigParser()
+    config_obj = configparser.ConfigParser()
 
-    if con:
+    if conf:
         if not os.path.isfile(conf):
             raise FileNotFoundError(conf)
-        con.read(conf)
+        config_obj.read(conf)
 
-    return con
+    return config_obj
 
 
 #

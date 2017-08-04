@@ -91,7 +91,7 @@ l3overlayd.main()''' % {"src_dir": SRC_DIR})
             arg = "--%s" % akey
             if value is None:
                 continue
-            elif isinstance(value, list) or isinstance(value, tuple):
+            elif isinstance(value, (list, tuple)):
                 for v in value:
                     command.extend([arg, v])
             elif key.startswith("no_"):

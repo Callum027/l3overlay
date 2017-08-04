@@ -211,7 +211,7 @@ def read(logger, name, config):
     inner_overlay_name = util.name_get(config["inner-overlay-name"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
 
-    if not isinstance(type(inner_address), outer_address):
+    if not isinstance(inner_address, type(outer_address)):
         raise ReadError(
             "inner address '%s' (%s) and outer address '%s' (%s) "
             "must be the same type of IP address" %
